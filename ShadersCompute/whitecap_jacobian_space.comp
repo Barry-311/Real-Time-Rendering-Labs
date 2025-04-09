@@ -1,0 +1,26 @@
+#version 430 core
+layout(local_size_x=16, local_size_y=16) in;
+
+// du/dx => partialU_x, du/dy => partialU_y, dv/dx => partialV_x, dv/dy => partialV_y
+layout(r32f, binding=0) readonly  uniform image2D partialU_x;
+layout(r32f, binding=1) readonly  uniform image2D partialU_y;
+layout(r32f, binding=2) readonly  uniform image2D partialV_x;
+layout(r32f, binding=3) readonly  uniform image2D partialV_y;
+
+layout(r32f, binding=4) writeonly uniform image2D uJacobianTex;
+
+void main()
+{
+    ivec2 gid= ivec2(gl_GlobalInvocationID.xy);
+    ivec2 sz= imageSize(uJacobianTex);
+    if(gid.x>=sz.x || gid.y>=sz.y) return;
+
+    float dudx= imageLoad(partialU_x, gid).r;
+    float dudy= imageLoad(partialU_y, gid).r;
+    float dvdx= imageLoad(partialV_x, gid).r;
+    float dvdy= imageLoad(partialV_y, gid).r;
+
+    float jVal= (1.0 + dudx)*(1.0 + dvdy) - dudy*dvdx;
+
+    imageStore(uJacobianTex, gid, vec4(jVal,0,0,0));
+}

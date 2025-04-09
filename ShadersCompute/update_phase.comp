@@ -1,0 +1,59 @@
+#version 430 core
+layout(local_size_x=16, local_size_y=16) in;
+
+// binding=0 => read base freq
+layout(rg32f, binding=0) uniform image2D uSpectrum0;
+// binding=1 => write new freq
+layout(rg32f, binding=1) uniform image2D uSpectrumOut;
+
+uniform float uTime;
+uniform float uDomainSize;
+uniform float uGravity;
+uniform int   uMode; // 0=>u, 1=>v, 2=>h
+
+void main()
+{
+    ivec2 gid= ivec2(gl_GlobalInvocationID.xy);
+    ivec2 sz= imageSize(uSpectrum0);
+    if(gid.x>=sz.x || gid.y>=sz.y) return;
+
+    int Nx= sz.x;
+    int halfX= Nx/2;
+    int halfY= sz.y/2;
+    int i= gid.x - halfX;
+    int j= gid.y - halfY;
+
+    float dk= 2.0*3.14159265359 / uDomainSize;
+    float kx= float(i)*dk;
+    float ky= float(j)*dk;
+    float kLen= sqrt(kx*kx + ky*ky);
+
+    vec4 c= imageLoad(uSpectrum0, gid);
+    float re0= c.r;
+    float im0= c.g;
+
+    if(kLen<1e-8)
+    {
+        imageStore(uSpectrumOut, gid, vec4(0,0,0,0));
+        return;
+    }
+
+    float omega= sqrt(uGravity* kLen);
+    float phase= 3.0 * omega* uTime;
+    float cs= cos(phase);
+    float sn= sin(phase);
+
+    // re,im => re0*c - im0*s, re0*s + im0*c
+    float re= re0*cs - im0*sn;
+    float im= re0*sn + im0*cs;
+
+    //imageStore(uSpectrumOut, gid, vec4(re,im,0,0));
+    /*if (abs(re0) < 1e-6 && abs(im0) < 1e-6) {
+        imageStore(uSpectrumOut, gid, vec4(0.1, 0.0, 0, 0));
+    } else {
+        imageStore(uSpectrumOut, gid, vec4(re, im, 0, 0));
+    }*/
+
+    imageStore(uSpectrumOut, gid, vec4(re, im, 0, 0));
+
+}

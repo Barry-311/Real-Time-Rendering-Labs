@@ -1,0 +1,74 @@
+#version 430 core
+layout(local_size_x=16, local_size_y=1) in;
+
+layout(rg32f, binding=0) uniform image2D uInput;
+layout(r32f, binding=1) uniform image2D uOutput;
+
+uniform uint uInverse;
+
+//const uint N = 256;
+shared vec2 colData[N];
+
+vec2 complexMul(vec2 a, vec2 b) {
+    return vec2(a.x*b.x - a.y*b.y,
+                a.x*b.y + a.y*b.x);
+}
+
+void fftCooleyTukey(uint sizeY, uint inverse) {
+    uint j = 0u;
+    for (uint i = 1u; i < sizeY; i++) {
+        uint bit = (sizeY >> 1);
+        for (; (j & bit) != 0u; bit >>= 1u) j ^= bit;
+        j ^= bit;
+        if (i < j) {
+            vec2 tmp = colData[i];
+            colData[i] = colData[j];
+            colData[j] = tmp;
+        }
+    }
+
+    for (uint len = 2u; len <= sizeY; len <<= 1u) {
+        float theta = 2.0 * 3.14159265359 / float(len) * ((inverse == 1u) ? 1.0 : -1.0);
+        vec2 wlen = vec2(cos(theta), sin(theta));
+        for (uint i = 0u; i < sizeY; i += len) {
+            vec2 w = vec2(1.0, 0.0);
+            for (uint k = 0u; k < (len >> 1); k++) {
+                vec2 uVal = colData[i + k];
+                vec2 tVal = complexMul(w, colData[i + k + (len >> 1)]);
+                colData[i + k] = uVal + tVal;
+                colData[i + k + (len >> 1)] = uVal - tVal;
+                w = complexMul(w, wlen);
+            }
+        }
+    }
+
+    if (inverse == 1u) {
+        float inv = 1.0 / float(sizeY);
+        for (uint i = 0u; i < sizeY; i++) {
+            colData[i] *= inv;
+        }
+    }
+}
+
+void main() {
+    ivec2 sz = imageSize(uInput);
+    uint col = gl_GlobalInvocationID.x;
+    if (col >= uint(sz.x)) return;
+
+    for (uint y = 0u; y < uint(sz.y); y++) {
+        vec4 c = imageLoad(uInput, ivec2(int(col), int(y)));
+        colData[y] = vec2(c.r, c.g);
+    }
+
+    // FFT (col)
+    fftCooleyTukey(uint(sz.y), uInverse);
+
+    for (uint y = 0u; y < uint(sz.y); y++) {
+        if (((col + y) & 1u) == 1u) {
+            colData[y] = -colData[y];
+        }
+
+        vec2 val = colData[y];
+        imageStore(uOutput, ivec2(int(col), int(y)), vec4(val.x, 0, 0, 0));
+    }
+}

@@ -1,0 +1,24 @@
+# Visual Studio generated files
+.vs/
+*.VC.db
+*.ipch
+*.sdf
+*.pdb
+*.obj
+*.exe
+*.log
+*.user
+*.cache
+*.ilk
+*.idb
+*.aps
+*.ncb
+*.tlog
+*.lastbuildstate
+*.opensdf
+*.suo
+*.sln.docstates
+Debug/
+Release/
+build/
+x64/
