@@ -21,3 +21,5 @@ Mipmap Mapping
 
 Assignment:  
 Ocean Simulation
+Compute Shader on GPU & Paper reuse: J. Dupuy and E. Bruneton, “Real-time animation and rendering of ocean whitecaps”, 2012.  
+![image](https://github.com/user-attachments/assets/fba1f8c3-401b-47ce-a08f-f4a727c98b87)
